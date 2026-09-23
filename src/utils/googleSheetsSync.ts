@@ -5,6 +5,9 @@ import {
   InventoryTransaction,
 } from '../types/inventory';
 
+export const DEFAULT_GOOGLE_APPS_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbzbxUwe6LniwrQZvQcSnODrKPsQ5IXj0EmV3-9FJTbRRORVXxJrEgDsDOp1i_KHvl_sKw/exec';
+
 export const SAMPLE_APPS_SCRIPT_CODE = `/**
  * GOOGLE APPS SCRIPT CHO HỆ THỐNG QUẢN LÝ KHO TEAM CIC
  * Cách cài đặt:
@@ -106,12 +109,12 @@ export async function syncToGoogleSheets(
   }
 
   try {
-    // Mode no-cors is standard for browser requests to Google Apps Script Web Apps to prevent CORS preflight block
+    // Mode no-cors with text/plain is standard for browser requests to Google Apps Script Web Apps to prevent CORS preflight block
     await fetch(config.webhookUrl.trim(), {
       method: 'POST',
       mode: 'no-cors',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/plain;charset=utf-8',
       },
       body: JSON.stringify(payload),
     });

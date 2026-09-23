@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { X, Layers, Check, Copy, ExternalLink, RefreshCw, Send, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Layers, Check, Copy, ExternalLink, RefreshCw, Send, AlertCircle, Link } from 'lucide-react';
 import { GoogleSheetsConfig } from '../types/inventory';
-import { SAMPLE_APPS_SCRIPT_CODE } from '../utils/googleSheetsSync';
+import { SAMPLE_APPS_SCRIPT_CODE, DEFAULT_GOOGLE_APPS_SCRIPT_URL } from '../utils/googleSheetsSync';
 
 interface GoogleSheetsModalProps {
   isOpen: boolean;
@@ -22,11 +22,19 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
   isSyncing,
   lastSyncMessage,
 }) => {
-  const [webhookUrl, setWebhookUrl] = useState(config.webhookUrl || '');
+  const [webhookUrl, setWebhookUrl] = useState(config.webhookUrl || DEFAULT_GOOGLE_APPS_SCRIPT_URL);
   const [sheetName, setSheetName] = useState(config.sheetName || 'Kho_CIC');
-  const [autoSync, setAutoSync] = useState(config.autoSync || false);
+  const [autoSync, setAutoSync] = useState(config.autoSync ?? true);
   const [copied, setCopied] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setWebhookUrl(config.webhookUrl || DEFAULT_GOOGLE_APPS_SCRIPT_URL);
+      setSheetName(config.sheetName || 'Kho_CIC');
+      setAutoSync(config.autoSync ?? true);
+    }
+  }, [isOpen, config]);
 
   if (!isOpen) return null;
 
@@ -93,9 +101,26 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
               placeholder="https://script.google.com/macros/s/AKfycb.../exec"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 text-xs font-mono outline-none bg-[#F5FBFA]"
             />
-            <p className="mt-1 text-[11px] text-slate-500">
-              URL triển khai ứng dụng web của Google Sheet để nhận dữ liệu tồn kho.
-            </p>
+            <div className="flex items-center justify-between mt-1 text-[11px]">
+              <span className="text-slate-500">
+                URL triển khai ứng dụng web của Google Sheet để nhận dữ liệu tồn kho.
+              </span>
+              {webhookUrl !== DEFAULT_GOOGLE_APPS_SCRIPT_URL && (
+                <button
+                  type="button"
+                  onClick={() => setWebhookUrl(DEFAULT_GOOGLE_APPS_SCRIPT_URL)}
+                  className="text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
+                >
+                  Dùng link mặc định Team CIC
+                </button>
+              )}
+            </div>
+            {webhookUrl === DEFAULT_GOOGLE_APPS_SCRIPT_URL && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Đã kết nối Google Apps Script chính thức của Team CIC</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100">

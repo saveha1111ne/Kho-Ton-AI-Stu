@@ -34,6 +34,8 @@ import {
   loadAppData,
   saveAppData,
   clearAppData,
+  exportBackupJSON,
+  DEFAULT_GOOGLE_SHEETS_CONFIG,
 } from './utils/storage';
 import {
   calculateFullInventory,
@@ -53,9 +55,7 @@ export function App() {
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [initialBalances, setInitialBalances] = useState<BeginningBalance[]>([]);
   const [googleSheetsConfig, setGoogleSheetsConfig] = useState<GoogleSheetsConfig>({
-    webhookUrl: '',
-    autoSync: false,
-    sheetName: 'Kho_CIC',
+    ...DEFAULT_GOOGLE_SHEETS_CONFIG,
   });
 
 
@@ -452,10 +452,29 @@ export function App() {
     newTransactions: InventoryTransaction[],
     newBalances: BeginningBalance[]
   ) => {
+    const finalItems = newItems.length > 0 ? newItems : items;
+    const finalTx = newTransactions.length > 0 ? newTransactions : transactions;
+    const finalBalances = newBalances.length > 0 ? newBalances : initialBalances;
     if (newItems.length > 0) setItems(newItems);
     if (newTransactions.length > 0) setTransactions(newTransactions);
     if (newBalances.length > 0) setInitialBalances(newBalances);
     addToast('success', '✓ Đã nạp thành công dữ liệu từ file Excel/CSV vào hệ thống!');
+    triggerAutoSync(finalTx, finalItems, branches, months, finalBalances);
+  };
+
+  // --- Handlers: JSON Backup ---
+  const handleBackupData = () => {
+    const jsonStr = exportBackupJSON();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup_kho_cic_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    addToast('success', '✓ Đã tải file sao lưu dữ liệu JSON thành công!');
   };
 
   // --- Handlers: Google Sheets Manual Sync ---
@@ -525,7 +544,11 @@ export function App() {
           onOpenGoogleSheetsModal={() => setIsSheetsModalOpen(true)}
           onOpenExcelImportModal={() => setIsExcelImportModalOpen(true)}
           onResetData={handleResetData}
+          onBackupData={handleBackupData}
+          onDownloadSingleHtml={handleDownloadSingleFileHtml}
           googleSheetsConfig={googleSheetsConfig}
+          isGoogleSynced={Boolean(googleSheetsConfig.webhookUrl && googleSheetsConfig.autoSync)}
+          lastSyncTime={googleSheetsConfig.lastSyncedAt}
         />
 
         {/* Navigation Bar */}

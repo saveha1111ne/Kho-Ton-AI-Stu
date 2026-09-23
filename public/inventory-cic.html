@@ -100,15 +100,16 @@
     <div class="bg-white rounded-2xl p-4 border border-teal-100 shadow-xs">
       <div class="flex items-center justify-between mb-3">
         <span class="text-xs font-bold uppercase tracking-wider text-slate-700">⚡ Thao tác nhanh</span>
-        <span class="text-xs text-slate-500">Tự động tính toán & lưu trên trình duyệt</span>
+        <span class="text-xs text-slate-500">Tự động tính toán & đồng bộ Google Sheets</span>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         <button onclick="openModal('inward-modal')" class="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-xs">+ NHẬP KHO</button>
         <button onclick="openModal('outward-modal')" class="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 font-bold text-xs">+ XUẤT KHO</button>
         <button onclick="openModal('item-modal')" class="p-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 font-bold text-xs">+ THÊM VẬT TƯ</button>
         <button onclick="openModal('month-modal')" class="p-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 font-bold text-xs">+ THÊM THÁNG</button>
         <button onclick="exportToExcel()" class="p-2.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 font-bold text-xs">📥 XUẤT EXCEL</button>
         <button onclick="exportToCSV()" class="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs">📄 XUẤT CSV</button>
+        <button onclick="manualSyncGoogleSheets()" class="p-2.5 rounded-xl bg-green-50 hover:bg-green-100 border border-green-300 text-green-900 font-bold text-xs">🔗 GOOGLE SHEET</button>
       </div>
     </div>
 
@@ -348,12 +349,79 @@
     let currentMonth = months[months.length - 1] || 'T07/2026';
     let currentTab = 'dashboard';
 
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbxUwe6LniwrQZvQcSnODrKPsQ5IXj0EmV3-9FJTbRRORVXxJrEgDsDOp1i_KHvl_sKw/exec';
+
     function saveData() {
       localStorage.setItem('cic_branches', JSON.stringify(branches));
       localStorage.setItem('cic_items', JSON.stringify(items));
       localStorage.setItem('cic_months', JSON.stringify(months));
       localStorage.setItem('cic_transactions', JSON.stringify(transactions));
       localStorage.setItem('cic_initial_balances', JSON.stringify(initialBalances));
+    }
+
+    async function syncToGoogleSheets(latestTx) {
+      if (!GOOGLE_APPS_SCRIPT_URL) return;
+      try {
+        const { matrix } = calculateSystem();
+        const activeM = currentMonth;
+        const curData = matrix[activeM] || {};
+        const itemSummaries = items.map(it => {
+          let beg = 0, inQty = 0, outQty = 0, end = 0;
+          branches.forEach(b => {
+            const c = curData[it.code]?.[b.name] || { beg: 0, inQty: 0, outQty: 0, end: 0 };
+            beg += c.beg; inQty += c.inQty; outQty += c.outQty; end += c.end;
+          });
+          return {
+            itemCode: it.code,
+            itemName: it.name,
+            category: it.category,
+            unit: it.unit,
+            beginningStock: beg,
+            inQuantity: inQty,
+            outQuantity: outQty,
+            endingStock: end
+          };
+        });
+
+        const branchSummaries = branches.map(b => {
+          let beg = 0, inQty = 0, outQty = 0, end = 0;
+          items.forEach(it => {
+            const c = curData[it.code]?.[b.name] || { beg: 0, inQty: 0, outQty: 0, end: 0 };
+            beg += c.beg; inQty += c.inQty; outQty += c.outQty; end += c.end;
+          });
+          return { branchName: b.name, beginningStock: beg, inQuantity: inQty, outQuantity: outQty, endingStock: end };
+        });
+
+        const payload = {
+          selectedMonth: activeM,
+          items: itemSummaries,
+          branches: branchSummaries,
+          latestTransaction: latestTx
+        };
+
+        await fetch(GOOGLE_APPS_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        console.log('✓ Google Sheets auto-sync sent successfully');
+      } catch (err) {
+        console.warn('Google Sheets sync error:', err);
+      }
+    }
+
+    async function manualSyncGoogleSheets() {
+      const btn = event?.currentTarget;
+      if (btn) btn.textContent = '⏳ Đang gửi...';
+      try {
+        await syncToGoogleSheets(transactions[transactions.length - 1]);
+        alert('✓ Đã gửi lệnh đồng bộ sang Google Sheets thành công!');
+      } catch (e) {
+        alert('Lỗi gửi đồng bộ: ' + e.message);
+      } finally {
+        if (btn) btn.textContent = '🔗 GOOGLE SHEET';
+      }
     }
 
     // CALCULATION LOGIC
@@ -742,7 +810,7 @@
         }
       }
 
-      transactions.push({
+      const newTx = {
         id: 'tx-' + Date.now(),
         type,
         month,
@@ -753,12 +821,14 @@
         unit: item?.unit || 'Cái',
         quantity,
         note
-      });
+      };
+      transactions.push(newTx);
 
       saveData();
       closeModal('tx-modal');
       renderApp();
-      alert('✓ Đã lưu phiếu giao dịch thành công!');
+      syncToGoogleSheets(newTx);
+      alert('✓ Đã lưu phiếu giao dịch thành công (Đã tự động gửi sang Google Sheets)!');
     }
 
     function quickTx(code, type) {

@@ -12,6 +12,7 @@ import {
   SAMPLE_INITIAL_BALANCES,
   SAMPLE_TRANSACTIONS,
 } from '../data/sampleData';
+import { DEFAULT_GOOGLE_APPS_SCRIPT_URL } from './googleSheetsSync';
 
 const KEYS = {
   BRANCHES: 'cic_inventory_branches_v1',
@@ -112,18 +113,28 @@ export function saveTransactions(transactions: InventoryTransaction[]): void {
   }
 }
 
+export const DEFAULT_GOOGLE_SHEETS_CONFIG: GoogleSheetsConfig = {
+  webhookUrl: DEFAULT_GOOGLE_APPS_SCRIPT_URL,
+  sheetName: 'Kho_CIC',
+  autoSync: true,
+};
+
 export function loadGoogleSheetsConfig(): GoogleSheetsConfig {
   try {
     const raw = localStorage.getItem(KEYS.GOOGLE_SHEETS_CONFIG);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed: GoogleSheetsConfig = JSON.parse(raw);
+      // If user previously had an empty webhookUrl or autoSync false, populate with default official URL
+      if (!parsed.webhookUrl) {
+        parsed.webhookUrl = DEFAULT_GOOGLE_APPS_SCRIPT_URL;
+        parsed.autoSync = true;
+      }
+      return parsed;
+    }
   } catch (e) {
     console.error('Error loading google sheets config', e);
   }
-  return {
-    webhookUrl: '',
-    sheetName: 'Kho_CIC',
-    autoSync: false,
-  };
+  return { ...DEFAULT_GOOGLE_SHEETS_CONFIG };
 }
 
 export function saveGoogleSheetsConfig(config: GoogleSheetsConfig): void {

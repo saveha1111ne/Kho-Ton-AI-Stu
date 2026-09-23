@@ -47,12 +47,18 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-[#80CBC4]/30 text-teal-100 border border-[#80CBC4]/40">
                     Team CIC System
                   </span>
-                  {isGoogleSynced && (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      Google Sheets
-                    </span>
-                  )}
+                  <button
+                    onClick={onOpenGoogleSheetsModal}
+                    title={isGoogleSynced ? `Google Sheets: Tự động đồng bộ đang BẬT (${googleSheetsConfig?.webhookUrl?.slice(0, 45)}...)` : 'Cấu hình Google Sheets'}
+                    className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors border ${
+                      isGoogleSynced
+                        ? 'bg-emerald-500/30 text-emerald-200 border-emerald-400/50 hover:bg-emerald-500/40'
+                        : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isGoogleSynced ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`}></span>
+                    <span>Google Sheets: {isGoogleSynced ? 'Tự động đồng bộ' : 'Chưa kết nối'}</span>
+                  </button>
                 </div>
                 <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white drop-shadow-sm">
                   HỆ THỐNG QUẢN LÝ HÀNG TỒN KHO TEAM CIC
